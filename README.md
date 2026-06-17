@@ -19,6 +19,23 @@ This server communicates with Audacity over named pipes and exposes many Audacit
 
 ## Install
 
+### Have your agent install it (recommended)
+
+This server is designed to be installed and wired up by an AI coding agent. If you
+already run Claude Code, Codex, Cursor, or a similar agent, paste this into it:
+
+```
+Retrieve and follow the instructions at:
+https://raw.githubusercontent.com/An-3/an3-audacity-mcp/main/INSTALL_FOR_AGENTS.md
+```
+
+The agent clones the repo, sets up the virtualenv, registers the MCP server with
+your client using absolute paths, installs the `audacity-control` skill, and runs an
+end-to-end check. It pauses only for the one GUI step you have to do yourself —
+enabling `mod-script-pipe` in Audacity's Modules settings and restarting Audacity.
+
+### Manual install
+
 ```bash
 git clone https://github.com/An-3/mcp-audacity.git
 cd mcp-audacity
