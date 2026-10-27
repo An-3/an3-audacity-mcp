@@ -18,7 +18,7 @@ Adjust the PIPE_TO and PIPE_FROM constants below if your setup uses different pa
 import glob
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any, AsyncIterator
+from typing import Dict, Any, AsyncIterator, Optional
 
 from mcp.server.fastmcp import FastMCP, Context
 
@@ -168,15 +168,32 @@ mcp = FastMCP(
     lifespan=server_lifespan
 )
 
+def format_param(key: str, value: Any) -> str:
+    """Render one "Key=value" pair in Audacity scripting syntax."""
+    # Commands are newline-terminated on the pipe, so a stray newline would start a new command.
+    if not key or not all(c.isalnum() or c in "_-" for c in key):
+        raise ValueError(f"Invalid parameter name: {key!r}")
+    if isinstance(value, bool):
+        text = "1" if value else "0"
+    elif isinstance(value, (int, float)):
+        text = str(value)
+    else:
+        text = str(value)
+        if "\n" in text or "\r" in text:
+            raise ValueError(f"Parameter {key} must not contain newlines")
+        text = '"' + text.replace('"', '\\"') + '"'
+    return f"{key}={text}"
+
 # Helper function to create command functions with unique names.
 def make_command_function(cmd_id: str, doc: str):
-    def command_func(ctx: Context) -> str:
+    def command_func(ctx: Context, params: Optional[Dict[str, Any]] = None) -> str:
         try:
-            # Audacity scripting commands should be sent in "Command:" form.
-            return get_audacity_connection().send_command(f"{cmd_id}:")
+            # Audacity scripting commands are sent as "Command: Key=value Key2=value2".
+            args = " ".join(format_param(k, v) for k, v in (params or {}).items())
+            return get_audacity_connection().send_command(f"{cmd_id}: {args}".rstrip())
         except Exception as e:
             return f"Error executing {cmd_id}: {e}"
-    command_func.__doc__ = doc
+    command_func.__doc__ = doc + " Optional `params` is a dict of Audacity command parameters, e.g. {\"Start\": 0, \"End\": 10}."
     command_func.__name__ = f"cmd_{cmd_id}"  # Ensure unique function name
     return command_func
 
